@@ -1,18 +1,20 @@
-from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .models import NoteInfo
 from .serializers import NoteSerializer
-from rest_framework.permissions import IsAuthenticated     # ⭐ Add this
 
-# ViewSet automatically provides GET and POST (and more)
+class NoteListView(APIView):
+    permission_classes = [IsAuthenticated]
 
-class NoteViewSet(viewsets.ModelViewSet):
-#     queryset = NoteInfo.objects.all()   DELETE THIS LINE
-    
-    serializer_class = NoteSerializer
-    permission_classes = [IsAuthenticated]   # ⭐ Add this
+    def get(self, request):
+        notes = NoteInfo.objects.filter(user=request.user)
+        serializer = NoteSerializer(notes, many=True)
+        return Response(serializer.data)
 
-    def get_queryset(self):
-        return NoteInfo.objects.filter(user=self.request.user)  # ⭐ Only their notes
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)  # ⭐ Automatically set user
+    def post(self, request):
+        serializer = NoteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)  # sets user automatically
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
